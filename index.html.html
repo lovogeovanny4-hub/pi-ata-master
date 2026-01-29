@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piñata Master - Creador de Moldes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Inter:wght@400;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #FFEFD5; margin: 0; padding: 0; }
+        .font-titulo { font-family: 'Luckiest Guy', cursive; }
+        .neo-border { border: 4px solid #000; }
+        .card-yellow { background: #FFD700; box-shadow: 8px 8px 0px 0px #FF8C00; }
+        .card-white { background: #FFFFFF; box-shadow: 8px 8px 0px 0px #000000; }
+        .btn-green { background: #32CD32; box-shadow: 4px 4px 0px 0px #006400; transition: all 0.1s; cursor: pointer; }
+        .btn-green:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0px 0px #006400; }
+        .btn-paypal { background: #0070ba; color: white; border: 2px solid black; box-shadow: 4px 4px 0px 0px #003087; transition: all 0.1s; }
+        .btn-paypal:hover { background: #005ea6; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        function App() {
+            const [image, setImage] = useState(null);
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [config, setConfig] = useState({ wide: 2, high: 3, orientation: 'p' });
+            const [isGenerating, setIsGenerating] = useState(false);
+            const fileInputRef = useRef(null);
+
+            const handleUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    setPreviewUrl(url);
+                    const img = new Image();
+                    img.onload = () => setImage(img);
+                    img.src = url;
+                }
+            };
+
+            const generatePDF = async () => {
+                if (!image) return;
+                setIsGenerating(true);
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF(config.orientation, 'mm', 'a4');
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    
+                    const { wide, high } = config;
+                    const sw = image.width / wide;
+                    const sh = image.height / high;
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    canvas.width = 1500; 
+                    canvas.height = (sh / sw) * 1500;
+
+                    for (let y = 0; y < high; y++) {
+                        for (let x = 0; x < wide; x++) {
+                            if (x > 0 || y > 0) pdf.addPage();
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(image, x * sw, y * sh, sw, sh, 0, 0, canvas.width, canvas.height);
+                            pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 10, 10, pageWidth - 20, pageHeight - 30);
+                            pdf.setDrawColor(200);
+                            pdf.rect(10, 10, pageWidth - 20, pageHeight - 30);
+                            pdf.setFontSize(8);
+                            pdf.text(`Fila ${y+1}, Col ${x+1}`, 10, pageHeight - 5);
+                        }
+                    }
+                    pdf.save("molde_pinata.pdf");
+                } catch (err) {
+                    console.error(err);
+                    alert("Error al generar el PDF");
+                }
+                setIsGenerating(false);
+            };
+
+            return (
+                <div className="min-h-screen p-4 md:p-10">
+                    <header className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center bg-white neo-border p-6 rounded-3xl mb-10 card-white">
+                        <div className="text-center md:text-left">
+                            <h1 className="text-5xl font-titulo text-pink-500 tracking-wider">PIÑATA MASTER 🪅</h1>
+                            <p className="font-bold text-blue-500 text-sm italic">Crea tus moldes gigantes gratis</p>
+                        </div>
+                        
+                        <div className="mt-4 md:mt-0 flex flex-col items-center p-3">
+                            <span className="text-[10px] font-black uppercase mb-1">Visitas</span>
+                            <img src="https://hitwebcounter.com/counter/counter.php?page=pinatamaster_v4&style=0005&nbdigits=5&type=page&initCount=0" alt="Visitas" border="0" />
+                        </div>
+                    </header>
+
+                    <div className="max-w-5xl mx-auto grid md:grid-cols-12 gap-8">
+                        <aside className="md:col-span-4">
+                            <div className="neo-border p-6 rounded-3xl card-yellow h-full">
+                                <h3 className="font-titulo text-2xl mb-4 text-center">📏 GUÍA</h3>
+                                <div className="space-y-3 font-black text-sm">
+                                    {[
+                                        {t: "50 cm", p: "2x3 hojas"},
+                                        {t: "60 cm", p: "3x3 hojas"},
+                                        {t: "70 cm", p: "3x4 hojas"},
+                                        {t: "80 cm", p: "4x4 hojas"},
+                                        {t: "100 cm", p: "5x5 hojas"},
+                                        {t: "150 cm", p: "7x8 hojas"}
+                                    ].map((item, i) => (
+                                        <div key={i} className="flex justify-between bg-white/50 p-2 rounded-lg border-b-2 border-black/10">
+                                            <span>{item.t}</span>
+                                            <span className="text-blue-600">{item.p}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-8 pt-4 border-t-4 border-black/10">
+                                    <p className="text-[10px] font-black text-center mb-3 uppercase">¿Te sirvió la App?</p>
+                                    <a href="https://paypal.me/LovoAparicio" target="_blank" className="block text-center p-3 rounded-2xl font-black text-xs btn-paypal uppercase tracking-widest">
+                                        ☕️ Donar con PayPal
+                                    </a>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <main className="md:col-span-8 space-y-6">
+                            <div className="neo-border p-8 rounded-[3rem] card-white">
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    <div className="flex flex-col justify-between">
+                                        <div>
+                                            <div onClick={() => fileInputRef.current.click()} className="neo-border border-dashed border-4 border-gray-200 rounded-3xl p-6 text-center cursor-pointer hover:bg-yellow-50 mb-6 transition-all">
+                                                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleUpload} />
+                                                {previewUrl ? (
+                                                    <div className="relative">
+                                                        <img src={previewUrl} className="max-h-32 mx-auto rounded-xl shadow-lg" />
+                                                        <p className="text-[10px] font-black mt-2 text-green-600 uppercase">Imagen Cargada ✓</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="py-4">
+                                                        <p className="text-4xl mb-2">📁</p>
+                                                        <p className="font-black text-gray-400 text-xs">SUBIR IMAGEN</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mb-6 bg-blue-50 p-4 rounded-2xl border-2 border-black">
+                                                <label className="text-[10px] font-black block text-center uppercase mb-3 text-blue-600 italic">Orientación de Hoja</label>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => setConfig({...config, orientation: 'p'})} className={`flex-1 py-2 rounded-xl border-2 border-black font-black text-xs transition-all ${config.orientation === 'p' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}>VERTICAL</button>
+                                                    <button onClick={() => setConfig({...config, orientation: 'l'})} className={`flex-1 py-2 rounded-xl border-2 border-black font-black text-xs transition-all ${config.orientation === 'l' ? 'bg-black text-white' : 'bg-white hover:bg-gray-100'}`}>HORIZONTAL</button>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                                <div>
+                                                    <label className="text-[10px] font-black block text-center uppercase mb-1">Ancho</label>
+                                                    <input type="number" min="1" value={config.wide} onChange={(e) => setConfig({...config, wide: e.target.value})} className="w-full neo-border p-3 rounded-2xl font-black text-2xl text-center bg-white outline-none" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-black block text-center uppercase mb-1">Alto</label>
+                                                    <input type="number" min="1" value={config.high} onChange={(e) => setConfig({...config, high: e.target.value})} className="w-full neo-border p-3 rounded-2xl font-black text-2xl text-center bg-white outline-none" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button onClick={generatePDF} disabled={!image || isGenerating} className="w-full py-5 rounded-2xl font-titulo text-2xl text-white btn-green neo-border uppercase">
+                                            {isGenerating ? "GENERANDO..." : "DESCARGAR PDF"}
+                                        </button>
+                                    </div>
+
+                                    {/* Previsualización Dinámica Corregida */}
+                                    <div className="flex flex-col items-center justify-center bg-pink-100 rounded-[2rem] border-4 border-black p-6">
+                                        <p className="font-titulo text-pink-600 mb-4 uppercase tracking-widest">Vista Previa</p>
+                                        <div className="relative bg-white border-2 border-black flex items-center justify-center overflow-hidden" 
+                                             style={{ 
+                                                width: config.orientation === 'l' ? '180px' : '140px', 
+                                                height: config.orientation === 'l' ? '140px' : '180px' 
+                                             }}>
+                                            {previewUrl && <img src={previewUrl} className="absolute w-full h-full object-cover opacity-30" />}
+                                            <div className="grid w-full h-full relative z-10" 
+                                                 style={{ 
+                                                    gridTemplateColumns: `repeat(${config.wide}, 1fr)`, 
+                                                    gridTemplateRows: `repeat(${config.high}, 1fr)` 
+                                                 }}>
+                                                {Array.from({ length: Math.min(config.wide * config.high, 100) }).map((_, i) => (
+                                                    <div key={i} className="border-[0.5px] border-black/20"></div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="mt-4">
+                                            <p className="font-titulo text-3xl text-blue-600 uppercase leading-none">
+                                                {config.wide * config.high}
+                                            </p>
+                                            <p className="font-black text-[10px] text-blue-400 uppercase">Hojas Totales</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
